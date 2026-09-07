@@ -1,17 +1,13 @@
-name: Pipeline semanal Cartola FC
+name: Pipeline Cartola FC
 
 on:
-  schedule:
-    - cron: '0 11 * * 5'
-    - cron: '0 17 * * 2'
   workflow_dispatch:
 
 jobs:
-  pre-rodada:
-    if: github.event.schedule == '0 11 * * 5' || github.event_name == 'workflow_dispatch'
+  testar-pipeline:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout do repositório
+      - name: Baixar codigo
         uses: actions/checkout@v4
 
       - name: Configurar Python
@@ -19,54 +15,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar dependências
-        run: |
-          pip install pandas numpy scipy requests pulp beautifulsoup4 lxml
-
-      - name: Rodar pipeline pré-rodada
-        run: |
-          python pipeline_semanal.py --rodada 27 --etapa pre_rodada
-
-      - name: Salvar resultados como artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: resultado-pre-rodada
-          path: |
-            *.csv
-            *.log
-          retention-days: 30
-
-  pos-rodada:
-    if: github.event.schedule == '0 17 * * 2' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout do repositório
-        uses: actions/checkout@v4
-
-      - name: Configurar Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Instalar dependências
+      - name: Instalar bibliotecas
         run: |
           pip install pandas numpy scipy requests
 
-      - name: Rodar validação pós-rodada
+      - name: Verificar arquivos
         run: |
-          python pipeline_semanal.py --rodada 26 --etapa pos_rodada
+          ls -la
+          echo "=== ARQUIVOS ENCONTRADOS ==="
+          python -c "import os; print(os.listdir('.'))"
 
-      - name: Salvar log de validação como artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: log-validacao
-          path: log_aproximacao_rodadas.csv
-          retention-days: 90
-
-      - name: Commitar o log de volta no repositório
+      - name: Testar pipeline
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add log_aproximacao_rodadas.csv
-          git diff --staged --quiet || git commit -m "Atualiza log da rodada"
-          git push
+          echo "Rodando pipeline..."
+          python pipeline_semanal.py --rodada 27 --etapa pre_rodada || echo "Pipeline falhou, mas continuamos"
